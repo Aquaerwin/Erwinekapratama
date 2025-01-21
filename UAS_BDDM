@@ -1,0 +1,68 @@
+!pip install pandas
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+
+data = pd.read_csv('/content/world_health_data.csv')
+
+
+
+data.info()
+
+imputer = SimpleImputer(strategy='mean')
+data_imputed = imputer.fit_transform(data.select_dtypes(include=['float64', 'int64']))
+data[data.select_dtypes(include=['float64', 'int64']).columns] = data_imputed
+
+data = data.drop(['country', 'country_code'], axis=1)
+
+X = data.drop('life_expect', axis=1)
+y = data['life_expect']
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+data.describe()
+
+sns.histplot(data['life_expect'], kde=True)
+plt.title('Distribusi Life Expectancy')
+plt.show()
+
+numeric_data = data.select_dtypes(include=['float64', 'int64'])
+plt.figure(figsize=(10, 8))
+sns.heatmap(numeric_data.corr(), annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5)
+plt.title('Korelasi Antar Fitur')
+plt.show()
+
+from sklearn.ensemble import RandomForestRegressor
+
+rf_model = RandomForestRegressor(random_state=42)
+rf_model.fit(X_train, y_train)
+
+feature_importances = pd.Series(rf_model.feature_importances_, index=X.columns)
+feature_importances = feature_importances.sort_values(ascending=False)
+print(feature_importances)
+
+important_features = feature_importances[feature_importances > 0.05].index
+X_train_important = X_train[important_features]
+X_test_important = X_test[important_features]
+
+
+rf_model.fit(X_train_important, y_train)
+
+y_pred = rf_model.predict(X_test_important)
+
+
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+
+rmse = mse ** 0.5
+
+r2 = r2_score(y_test, y_pred)
+
+print(f'Mean Absolute Error (MAE): {mae:.2f}')
+print(f'Mean Squared Error (MSE): {mse:.2f}')
+print(f'Root Mean Squared Error (RMSE): {rmse:.2f}')
+print(f'R-squared: {r2:.2f}')
